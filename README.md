@@ -42,3 +42,16 @@ cd "C:\path\to\your\script"
 4️⃣ Execute the Script
 Run the script using:
 .\File_Organizer.ps1
+
+🛠 Troubleshooting
+1️⃣ "Access Denied" Error?
+Run PowerShell as Administrator.
+
+2️⃣ "No valid folder selected" Error?
+Make sure you select a proper folder when prompted.
+
+3️⃣ "Script execution is disabled" Error?
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+🤝 Contributing
+Feel free to modify or improve this script! Fork the repository and submit a pull request.
