@@ -1,6 +1,6 @@
-# Get the currently logged-in user
-$LoggedInUsers = Get-WmiObject -Class Win32_ComputerSystem | Select-Object -ExpandProperty UserName
-$LoggedInUsers = $LoggedInUsers -replace '.*\\'  # Remove domain name (if any)
+# Get the currently logged-in user using a more reliable method
+$LoggedInUsers = whoami
+$LoggedInUsers = $LoggedInUsers -replace '.*\\'
 
 if (-not $LoggedInUsers) {
     Write-Host "❌ Unable to retrieve logged-in users. Exiting..."
@@ -26,7 +26,7 @@ function Select-Folder {
     Add-Type -AssemblyName System.Windows.Forms
     $Dialog = New-Object System.Windows.Forms.FolderBrowserDialog
     $Dialog.Description = "Select a folder"
-    $Dialog.RootFolder = "MyComputer"
+    $Dialog.RootFolder = [System.Environment+SpecialFolder]::Desktop
     $Dialog.ShowNewFolderButton = $false
     $Dialog.ShowDialog() | Out-Null
     return $Dialog.SelectedPath
@@ -41,8 +41,20 @@ Write-Host "`n📂 Choose where to organize your files..."
 $DestinationDir = Select-Folder
 if (-not $DestinationDir) { Write-Host "⚠️ No destination selected. Exiting..." ; exit }
 
-# Fetch files quickly
-$Files = Get-ChildItem -Path $SourceDir -File
+# Ensure source and destination are different
+if ($SourceDir -eq $DestinationDir) {
+    Write-Host "❌ Source and destination cannot be the same. Exiting..."
+    exit
+}
+
+# Fetch files with error handling
+try {
+    $Files = Get-ChildItem -Path $SourceDir -File -ErrorAction Stop
+} catch {
+    Write-Host "❌ Error accessing source folder: $_"
+    exit
+}
+
 if (-not $Files) {
     Write-Host "📁 No files found in the source folder. Nothing to organize!"
     exit
@@ -51,6 +63,9 @@ if (-not $Files) {
 Write-Host "`n🔄 Organizing files...`n"
 
 # Process files efficiently
+$TotalFiles = $Files.Count
+$ProcessedFiles = 0
+
 $Files | ForEach-Object {
     $Ext = $_.Extension.TrimStart('.')
     if (-not $Ext) { $Ext = "NoExtension" }
@@ -61,7 +76,8 @@ $Files | ForEach-Object {
 
     # Move file efficiently
     Move-Item -Path $_.FullName -Destination (Join-Path -Path $SubFolder -ChildPath $_.Name) -Force
-    Write-Host "✅ Moved: $($_.Name) → $SubFolder"
+    $ProcessedFiles++
+    Write-Host "✅ Moved: $($_.Name) → $SubFolder ($ProcessedFiles/$TotalFiles)"
 }
 
-Write-Host "`n🎉 Done! Your files are now organized."
+Write-Host "`n🎉 Done! Your files are now organized. Total files moved: $ProcessedFiles"
